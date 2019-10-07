@@ -3,6 +3,8 @@ import curses
 
 BET_MIN = 5
 BET_MAX = 500
+STARTING_SCORE = 1000
+NUM_DECKS = 3
 
 class CMD(Enum):
 	HIT = 'h'

@@ -24,7 +24,7 @@ class Player:
 	def __init__(self, name, player_num):
 		self.name = name
 		self.id = uuid4()
-		self.score = 1000
+		self.score = STARTING_SCORE
 		self.cards = []
 		self.color = eval(f"COLOR.{player_num}")
 		self.symbol = chr(randint(33,126))
@@ -90,7 +90,7 @@ class Player:
 
 
 class Dealer(Player):
-	def __init__(self, num_decks=1):
+	def __init__(self, num_decks=NUM_DECKS):
 		super().__init__("Dealer","DEALER")
 		self.color = COLOR.DEALER
 		self.avatar = [(randint(0,9), randint(-1,4)) for i in range(45)]
@@ -247,14 +247,6 @@ class Game:
 			p.reset()
 		self.dealer.reset()
 		
-				
-
-		
-					
-
-
-
-
 
 
 def main(stdscr):
