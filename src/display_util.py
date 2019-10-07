@@ -210,7 +210,7 @@ class DisplayTable:
 		msg1 = "[Your Turn]"
 		coords = self.partitions.get_coords(player)
 		x,y,w,h = coords["bounds"]
-		self.player_wind.addstr(y+h-2,x + int(w/2 - len(msg1)/2), msg1)
+		self.player_wind.addstr(y+h-2, x + max(0,int(w/2 - len(msg1)/2)), msg1)
 
 	def draw_dealing_screen(self):
 		msg1 = f"Dealing ..."

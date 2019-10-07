@@ -42,6 +42,10 @@ class Player:
 
 	def add_score(self, earnings):
 		self.score += int(earnings)
+	
+	def make_bet(self, amount):
+		self.score -= int(amount)
+		self.bet = int(amount) 
 
 	def bust(self, cost=0):
 		if len(self.sums()) == 0:
@@ -161,8 +165,7 @@ class Game:
 				bet = self.screen.getstr()
 				# if self.display.state != "betting_error":
 				# 	self.display.set_state("betting_error")
-			player.score -= int(bet) 
-			player.bet = int(bet)
+			player.make_bet(bet)
 		self.display.set_turn(None)
 
 		self.display.set_state("dealing")
