@@ -38,9 +38,29 @@ class Player:
 	def add_score(self, earnings):
 		self.score += earnings
 
+	def is_bust(self):
+		return self.sums is None
+
+	def sums(self):
+		total = [0]
+		for card in self.cards:
+			if card.num == 'A':
+				temp = [11 + t for t in total.copy()]
+				total = [1 + t for t in total]
+				total.extend(temp)
+			elif not card.num.isdigit():
+				total = [10 + t for t in total]
+			else:
+				total = [int(card.num) + t for t in total]
+		total = [t for t in total if t < 21]
+		return total
+
 	def get_options(self):
 		#TODO make these constants
-		ret = [('h','HIT'), ('s','STAND')]
+		ret = [CMD.HIT, CMD.STAND]
+		sums = set(self.sums())
+		if len(self.cards) == 2 and (9 in sums or 10 in sums or 11 in sums):
+			self.options.append(CMD.DOUBLE)
 		self.options = ret
 
 
@@ -86,7 +106,7 @@ class Game:
 		self.sleep(10000000)
 
 	def start(self):
-		# curses.echo()
+		curses.echo()
 		self.display.set_dealer(self.dealer)
 		self.display.refresh()
 
@@ -102,6 +122,7 @@ class Game:
 				self.display.add_player(new_player)
 		
 	def gameplay(self):
+
 		turn_order = self.players.copy()
 		for player in turn_order:
 			self.display.set_state("betting")
@@ -130,12 +151,25 @@ class Game:
 				player = turn_order[i]
 				player.get_options()
 				self.display.set_turn(player)
-				cmd = ""
-				while(cmd not in [p[0] for p in player.options]):
+				while(True):
 					cmd = self.screen.getch()
-	# 				self.handle_cmd(cmd)
-	# def handle_cmd(self):
+					while(cmd not in list(map(lambda x:ord(x.value), CMD))):
+						cmd = self.screen.getch()
+					self.display.draw_starting_screen()
+					self.display.refresh()
+					if cmd == ord('h'):
+						player.add_card(self.dealer.deal())
+					elif cmd == ord(CMD.STAND.value):
+						break
+					elif cmd == ord(CMD.DOUBLE.value):
+						player.bet *= 2
+						player.add_card(self.dealer.deal())
+					self.display.refresh()
+
 		
+
+
+
 def main(stdscr):
 	init_colors()
 	game = Game(stdscr)

@@ -217,8 +217,8 @@ class DisplayTable:
 	def draw_turn_screen(self):
 		if self.turn:
 			for i in range(len(self.turn.options)):
-				key, cmd = self.turn.options[i]
-				msg = f"[{key}] - {cmd} "
+				option = self.turn.options[i]
+				msg = f"[{option.value}] - {option.name} "
 				col = round(i/len(self.turn.options))+1
 				self.dealer_wind.addstr(2*i + 1, max(int(self.W*(col+1)/4),int(self.W*(3+2*col)/8)), msg)
 		
