@@ -1,6 +1,9 @@
 from enum import Enum
 import curses
 
+BET_MIN = 5
+BET_MAX = 500
+
 class COLOR(Enum):
 	CARD_BG = 1
 	CARD_RED = 2

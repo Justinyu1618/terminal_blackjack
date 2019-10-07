@@ -1,48 +1,13 @@
 from .constants import *
 import curses
 
-class Item:
-	def __init__(self, obj, x, y):
-		self.obj = obj
-		self.x = x
-		self.y = y
-
-# class PlayerPartition:
-# 	def __init__(self, x, y, w, h):
-# 		self.x, self.y, self.w, self.h = x, y, w, h
-
-# 	def get_player_coords(self):
-# 		x = self.x + max(round(self.w/8), 1)
-# 		y = self.y + round(self.h/2)
-# 		return x,y
-
-# 	def get_card_coords(self):
-# 		x1 = self.x + round(self.w*3/8)
-# 		w_h = round((self.w*5/8 - 3)/2)
-# 		x2 = x1 + w_h + 1
-# 		y1 = round((self.h - w_h)/2)
-# 		y2 = y1
-# 		return ((x1,y1,w_h,w_h), (x2,y2,w_h,w_h))
-
-# 	def get_score_coords(self):
-# 		x = self.x + max(round(self.w/8), 1)
-# 		y = self.y + round(self.h/8)
-# 		return x,y
-
-# 	def get_bounds_coords(self):
-# 		return self.x,self.y,self.w,self.h
-
-# 	def scale(self, scale):
-# 		self.x = int(self.x*scale)
-# 		self.w = int(self.w*scale)
-
 class PlayerPartition:
 	def __init__(self, x, y, w, h):
 		self.x, self.y, self.w, self.h = x, y, w, h
 
 	def get_player_coords(self):
 		x = self.x + max(round(self.w/8), 1)
-		y = self.y + round(self.h/2) + 1
+		y = self.y + round(self.h/2) + 2
 		return x,y
 
 	def get_card_coords(self, num_cards):
@@ -59,8 +24,18 @@ class PlayerPartition:
 		return ret
 
 	def get_score_coords(self):
+		x = self.x + max(round(self.w*5/8), 1)
+		y = self.y + round(self.h/2) + 2
+		return x,y
+
+	def get_bet_coords(self):
+		x = self.x + max(round(self.w*5/8), 1)
+		y = self.y + round(self.h/2) + 5
+		return x,y
+
+	def get_name_coords(self):
 		x = self.x + max(round(self.w/8), 1)
-		y = self.y + round(self.h/8)
+		y = self.y + round(self.h*7/8)
 		return x,y
 
 	def get_bounds_coords(self):
@@ -70,7 +45,9 @@ class PlayerPartition:
 		return {'bounds': self.get_bounds_coords(),
 				'player': self.get_player_coords(),
 				'cards': self.get_card_coords(len(player.cards)),
-				'score': self.get_score_coords()}
+				'score': self.get_score_coords(),
+				'bet': self.get_bet_coords(),
+				'name': self.get_name_coords()}
 
 class PartitionManager:
 	def __init__(self, bound_x: tuple, bound_y: tuple, num_parts = 4):
@@ -120,15 +97,28 @@ class DisplayTable:
 		self.dealer_partition = None
 		#TODO make this not constants
 		self.state = "starting"
+		self.turn = None
+		# self.txtbox = curses.textpad.Textbox(stdscr.derwin())
 
 	def refresh(self):
+		self.dealer_wind.clear()
+		self.dealer_wind.box()
+		self.draw_dealer()
 		if self.state == "starting":
-			self.draw_starting_screen()
-		elif self.state == "game":
-			self.dealer_wind.clear()
-			self.draw_game_screen()
-			self.draw_dealer()
+			self.draw_starting_screen()			
+		if self.state == "betting":
+			self.draw_betting_screen()
+		if self.state == "betting_error":
+			self.draw_betting_screen("Error: Bet too large or not an integer")
+		if self.state == "dealing":
+			self.draw_dealing_screen()
+		if self.state == "turn":
+			self.draw_turn_screen()
+
 		self.player_wind.clear()
+		self.player_wind.box()
+		if self.turn:
+			self.draw_turn_marker(self.turn)
 		for player in self.players:
 			self.draw_player(player, self.player_wind)
 		self.player_wind.refresh()
@@ -146,7 +136,9 @@ class DisplayTable:
 	def draw_player(self, player, window, coords=None):
 		coords = self.partitions.get_coords(player) if not coords else coords
 		self.draw_avatar(player, window, coords['player'])
+		self.draw_name(player.name, window, coords['name'])
 		self.draw_score(player.score, window, coords['score'])
+		self.draw_bet(player.bet, window, coords['bet'])
 		for i in range(len(player.cards)):
 			self.draw_card(player.cards[i], window, coords['cards'][i])
 		self.draw_boundary(window, coords['bounds'])
@@ -180,7 +172,18 @@ class DisplayTable:
 			window.addstr(j,x+w-1,"|")
 
 	def draw_score(self, score, window, loc):
-		pass 
+		x,y = loc
+		window.addstr(y,x,"Score")
+		window.addstr(y+1,x,f"{score}")
+
+	def draw_bet(self, bet, window, loc):
+		x,y = loc
+		window.addstr(y,x,"Bet")
+		window.addstr(y+1,x,f"{bet}")
+
+	def draw_name(self, name, window, loc):
+		x,y = loc
+		window.addstr(y,x,name)
 
 	def draw_avatar(self, player, window, loc):
 		x,y = loc
@@ -191,19 +194,43 @@ class DisplayTable:
 	def draw_starting_screen(self):
 		msg1 = "Press 'n' to add more players"
 		msg2 = "Press 's' to start"
-		self.dealer_wind.addstr(round(self.H/4), round(self.W/2 - len(msg1)), msg1)
-		self.dealer_wind.addstr(round(self.H/4)+1, round(self.W/2 - len(msg2)), msg2)
-		self.dealer_wind.refresh()
+		self.dealer_wind.addstr(round(self.H/4), int(self.W*3/4-len(msg1)/2), msg1)
+		self.dealer_wind.addstr(round(self.H/4)+1, int(self.W*3/4-len(msg2)/2), msg2)
 
-	def draw_betting_screen(self):
-		msg1 = "Please place your bet (pick a number 5 - 500)"
-		self.dealer_wind.addstr(int(self.H/2), max(0,int(self.W*3/4-len(msg1)/2)))
+	def draw_betting_screen(self, msg2 = None):
+		msg1 = f"Place your bet ({BET_MIN} - {BET_MAX})"
+		self.dealer_wind.addstr(int(self.H/4), max(int(self.W/2),int(self.W*3/4-len(msg1)/2)), msg1)
+		if msg2:
+			self.dealer_wind.addstr(int(self.H/4)+1, max(int(self.W/2),int(self.W*3/4-len(msg2)/2)), msg2)
+		self.dealer_wind.move(int(self.H/4) + 2, int(self.W*3/4))
 
+	def draw_turn_marker(self, player):
+		msg1 = "[Your Turn]"
+		coords = self.partitions.get_coords(player)
+		x,y,w,h = coords["bounds"]
+		self.player_wind.addstr(y+h-2,x + int(w/2 - len(msg1)/2), msg1)
 
-	def next_state(self):
-		if self.state == "starting":
-			self.state = "game"
+	def draw_dealing_screen(self):
+		msg1 = f"Dealing ..."
+		self.dealer_wind.addstr(int(self.H/4), max(int(self.W/2),int(self.W*3/4-len(msg1)/2)), msg1)
+
+	def draw_turn_screen(self):
+		if self.turn:
+			for i in range(len(self.turn.options)):
+				key, cmd = self.turn.options[i]
+				msg = f"[{key}] - {cmd} "
+				col = round(i/len(self.turn.options))+1
+				self.dealer_wind.addstr(2*i + 1, max(int(self.W*(col+1)/4),int(self.W*(3+2*col)/8)), msg)
+		
+
+	def set_state(self, state):
+		self.state = state
 		self.refresh()
+
+	def set_turn(self, player):
+		self.turn = player
+		self.refresh()
+
 
 def wait(stdscr):
 	while(stdscr.getch() != ord('q')):

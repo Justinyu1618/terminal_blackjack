@@ -24,11 +24,13 @@ class Player:
 	def __init__(self, name, player_num):
 		self.name = name
 		self.id = uuid4()
-		self.score = 0
+		self.score = 1000
 		self.cards = []
 		self.color = eval(f"COLOR.{player_num}")
 		self.symbol = chr(randint(33,126))
 		self.avatar = [(randint(0,4), randint(0,4)) for i in range(20)]
+		self.bet = 0
+		self.options = []
 
 	def add_card(self, card):
 		self.cards.append(card)
@@ -36,15 +38,22 @@ class Player:
 	def add_score(self, earnings):
 		self.score += earnings
 
+	def get_options(self):
+		#TODO make these constants
+		ret = [('h','HIT'), ('s','STAND')]
+		self.options = ret
+
 
 class Dealer(Player):
 	def __init__(self, num_decks=1):
 		super().__init__("Dealer","DEALER")
 		self.color = COLOR.DEALER
-		self.avatar = [(randint(0,9), randint(0,5)) for i in range(45)]
+		self.avatar = [(randint(0,9), randint(-1,4)) for i in range(45)]
 		self.deck = []
 		for i in range(num_decks):
 			self.init_deck()
+		self.bet = "inf"
+		self.score = "inf"
 
 	def init_deck(self):
 		for num in list(range(2,11)) + ['J','Q','K','A']:
@@ -65,20 +74,19 @@ class Game:
 		self.dealer = Dealer()
 		self.display = DisplayTable(stdscr)
 		self.screen = stdscr
-		self.turn_order = []
 
 	def sleep(self, time):
 		self.screen.timeout(time)
 		self.screen.getch()
+		self.screen.notimeout(True)
 
 	def run(self):
 		self.start()
-		self.display.next_state()
 		self.gameplay()
 		self.sleep(10000000)
 
 	def start(self):
-		curses.echo()
+		# curses.echo()
 		self.display.set_dealer(self.dealer)
 		self.display.refresh()
 
@@ -95,8 +103,19 @@ class Game:
 		
 	def gameplay(self):
 		turn_order = self.players.copy()
-		for player in s
+		for player in turn_order:
+			self.display.set_state("betting")
+			self.display.set_turn(player)
+			bet = ""
+			while(not bet.isdigit() or int(bet) > player.score
+					or int(bet) < BET_MIN or int(bet) > BET_MAX):
+				bet = self.screen.getstr()
+				self.display.set_state("betting_error")
+			player.score -= int(bet) 
+			player.bet = int(bet)
+		self.display.set_turn(None)
 
+		self.display.set_state("dealing")
 		for i in range(2):
 			for p in self.players:
 				p.add_card(self.dealer.deal())
@@ -104,14 +123,19 @@ class Game:
 				self.sleep(300)
 			self.dealer.add_card(self.dealer.deal(facedown = i == 1))
 			self.display.refresh()
-		while(self.turn_order):
-			for i in range(turn_order):
+		
+		self.display.set_state("turn")
+		while(turn_order):
+			for i in range(len(turn_order)):
 				player = turn_order[i]
+				player.get_options()
 				self.display.set_turn(player)
-
-
-
-
+				cmd = ""
+				while(cmd not in [p[0] for p in player.options]):
+					cmd = self.screen.getch()
+	# 				self.handle_cmd(cmd)
+	# def handle_cmd(self):
+		
 def main(stdscr):
 	init_colors()
 	game = Game(stdscr)
