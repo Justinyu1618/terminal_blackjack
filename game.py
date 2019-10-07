@@ -21,14 +21,14 @@ class Card:
 		self.facedown = not self.facedown
 
 class Player:
-	def __init__(self, name, num):
+	def __init__(self, name, player_num):
 		self.name = name
 		self.id = uuid4()
 		self.score = 0
 		self.cards = []
-		self.color = eval(f"COLOR.P{num}")
+		self.color = eval(f"COLOR.{player_num}")
 		self.symbol = chr(randint(33,126))
-		self.avatar = [(randint(0,4), randint(0,4)) for i in range(9)]
+		self.avatar = [(randint(0,4), randint(0,4)) for i in range(20)]
 
 	def add_card(self, card):
 		self.cards.append(card)
@@ -37,8 +37,11 @@ class Player:
 		self.score += earnings
 
 
-class Dealer:
+class Dealer(Player):
 	def __init__(self, num_decks=1):
+		super().__init__("Dealer","DEALER")
+		self.color = COLOR.DEALER
+		self.avatar = [(randint(0,9), randint(0,5)) for i in range(45)]
 		self.deck = []
 		for i in range(num_decks):
 			self.init_deck()
@@ -49,55 +52,70 @@ class Dealer:
 				self.deck.append(Card(suit, num))
 
 	def deal(self, facedown=False):
-		if len(deck) == 0:
+		if len(self.deck) == 0:
 			return False
-		card = deck.pop(random.randint(0, len(self.deck) - 1))
+		card = self.deck.pop(randint(0, len(self.deck) - 1))
 		if facedown:
 			card.flip()
 		return card
 
-
-
-
-
 class Game:
 	def __init__(self, stdscr):
-		self.players = set()
+		self.players = []
 		self.dealer = Dealer()
 		self.display = DisplayTable(stdscr)
 		self.screen = stdscr
+		self.turn_order = []
+
+	def sleep(self, time):
+		self.screen.timeout(time)
+		self.screen.getch()
+
+	def run(self):
+		self.start()
+		self.display.next_state()
+		self.gameplay()
+		self.sleep(10000000)
 
 	def start(self):
 		curses.echo()
+		self.display.set_dealer(self.dealer)
 		self.display.refresh()
+
+		#starting screen
 		p_count = 0
-		while(True):
+		key = None
+		while(p_count != 4 and key != ord('s')):
 			key = self.screen.getch()
 			if key == ord('n'):
 				p_count += 1
-				new_player = Player(f"Player {p_count}", p_count)
-				self.players.add(new_player)
+				new_player = Player(f"Player {p_count}", f"P{p_count}")
+				self.players.append(new_player)
 				self.display.add_player(new_player)
-			if p_count == 4 or key == ord('s'):
-				break
-		while(True):
-			key = self.screen.getch()
-			if key == ord('d'):
-				for p in self.players:
-					new_card = Card(SUIT.D, randint(0,9))
-					p.add_card(new_card)
-					self.display.refresh()
+		
+	def gameplay(self):
+		turn_order = self.players.copy()
+		for player in s
+
+		for i in range(2):
+			for p in self.players:
+				p.add_card(self.dealer.deal())
+				self.display.refresh()
+				self.sleep(300)
+			self.dealer.add_card(self.dealer.deal(facedown = i == 1))
+			self.display.refresh()
+		while(self.turn_order):
+			for i in range(turn_order):
+				player = turn_order[i]
+				self.display.set_turn(player)
+
+
+
 
 def main(stdscr):
-	curses.init_pair(COLOR.CARD_BG.value, curses.COLOR_RED, curses.COLOR_WHITE)
-	curses.init_pair(COLOR.CARD_RED.value, curses.COLOR_RED, curses.COLOR_WHITE)
-	curses.init_pair(COLOR.CARD_BLACK.value, curses.COLOR_BLACK, curses.COLOR_WHITE)
-	curses.init_pair(COLOR.P1.value, curses.COLOR_YELLOW, curses.COLOR_BLACK)
-	curses.init_pair(COLOR.P2.value, curses.COLOR_RED, curses.COLOR_BLACK)
-	curses.init_pair(COLOR.P3.value, curses.COLOR_CYAN, curses.COLOR_BLACK)
-	curses.init_pair(COLOR.P4.value, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
+	init_colors()
 	game = Game(stdscr)
-	game.start()
+	game.run()
 
 if __name__ == '__main__':
 	stdscr = curses.initscr()

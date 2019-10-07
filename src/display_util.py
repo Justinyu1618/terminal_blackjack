@@ -42,7 +42,7 @@ class PlayerPartition:
 
 	def get_player_coords(self):
 		x = self.x + max(round(self.w/8), 1)
-		y = self.y + round(self.h/2)
+		y = self.y + round(self.h/2) + 1
 		return x,y
 
 	def get_card_coords(self, num_cards):
@@ -66,9 +66,11 @@ class PlayerPartition:
 	def get_bounds_coords(self):
 		return self.x,self.y,self.w,self.h
 
-	def scale(self, scale):
-		self.x = int(self.x*scale)
-		self.w = int(self.w*scale)
+	def get_coords(self, player):
+		return {'bounds': self.get_bounds_coords(),
+				'player': self.get_player_coords(),
+				'cards': self.get_card_coords(len(player.cards)),
+				'score': self.get_score_coords()}
 
 class PartitionManager:
 	def __init__(self, bound_x: tuple, bound_y: tuple, num_parts = 4):
@@ -102,10 +104,7 @@ class PartitionManager:
 
 	def get_coords(self, player):
 		partition = self.players[player.id]
-		return {'bounds': partition.get_bounds_coords(),
-				'player': partition.get_player_coords(),
-				'cards': partition.get_card_coords(len(player.cards)),
-				'score': partition.get_score_coords()}
+		return partition.get_coords(player)
 
 class DisplayTable:
 	def __init__(self, stdscr):
@@ -117,66 +116,94 @@ class DisplayTable:
 		self.player_wind = stdscr.derwin(int(self.H/2-1), self.W, int(self.H/2+1), 0)	
 		self.players = set()
 		self.partitions = PartitionManager((0,self.W-1), (0,round(self.H/2)))
+		self.dealer = None
+		self.dealer_partition = None
+		#TODO make this not constants
+		self.state = "starting"
 
 	def refresh(self):
+		if self.state == "starting":
+			self.draw_starting_screen()
+		elif self.state == "game":
+			self.dealer_wind.clear()
+			self.draw_game_screen()
+			self.draw_dealer()
 		self.player_wind.clear()
 		for player in self.players:
-			self.draw_player(player)
+			self.draw_player(player, self.player_wind)
 		self.player_wind.refresh()
+		self.dealer_wind.refresh()
 	
 	def add_player(self, player):
 		self.partitions.add_player(player.id)
 		self.players.add(player)
 		self.refresh()
 
-	def draw_player(self, player):
-		coords = self.partitions.get_coords(player)
-		self.draw_player(player, coords['player'])
-		self.draw_score(player.score, coords['score'])
-		for i in range(len(player.cards)):
-			self.draw_card(player.cards[i], coords['cards'][i])
-		self.draw_boundary(coords['bounds'])
+	def set_dealer(self, dealer):
+		self.dealer = dealer
+		self.dealer_partition = PlayerPartition(0, 0, int(self.W/2)-1, int(self.H/2)-1)
 
-	def draw_card(self, card, loc):
+	def draw_player(self, player, window, coords=None):
+		coords = self.partitions.get_coords(player) if not coords else coords
+		self.draw_avatar(player, window, coords['player'])
+		self.draw_score(player.score, window, coords['score'])
+		for i in range(len(player.cards)):
+			self.draw_card(player.cards[i], window, coords['cards'][i])
+		self.draw_boundary(window, coords['bounds'])
+
+	def draw_dealer(self):
+		if not self.dealer:
+			return False
+		self.draw_player(self.dealer, self.dealer_wind, self.dealer_partition.get_coords(self.dealer))
+
+	def draw_card(self, card, window, loc):
 		x, y, w, h = loc
 		for j in range(y,y+h):
 			for i in range(x, x+w+1):
-				self.player_wind.addstr(j,i," ", curses.color_pair(1))
+				window.addstr(j,i," ", curses.color_pair(1))
 		if card.facedown:
 			for j in range(y,y+h):
 				for i in range(x, x+w+1):
-					self.player_wind.addstr(j,i,"%", curses.color_pair(COLOR.CARD_BLACK.value))
+					window.addstr(j,i,"@", curses.color_pair(COLOR.CARD_BLACK.value))
 		else:
-			self.player_wind.addstr(y, x,
+			window.addstr(y, x,
 							card.symbol, curses.color_pair(card.color.value))
-			self.player_wind.addstr(y + h-1, x + w-1,
+			window.addstr(y + h-1, x + w-1,
 							card.symbol, curses.color_pair(card.color.value))
-			self.player_wind.addstr(y + int(h/2), x + int(w/2),
+			window.addstr(y + int(h/2), x + int(w/2),
 							card.num, curses.color_pair(card.color.value))
 
-	def draw_boundary(self, loc):
+	def draw_boundary(self, window, loc):
 		x,y,w,h = loc
 		for j in range(y,y+h-1):
-			self.player_wind.addstr(j,x,"|")
-			self.player_wind.addstr(j,x+w-1,"|")
+			window.addstr(j,x,"|")
+			window.addstr(j,x+w-1,"|")
 
-	def draw_score(self, score, loc):
+	def draw_score(self, score, window, loc):
 		pass 
 
-	def draw_player(self, player, loc):
+	def draw_avatar(self, player, window, loc):
 		x,y = loc
 		avatar = player.avatar
 		for i,j in avatar:
-			self.player_wind.addstr(y + j, x + i, player.symbol, curses.color_pair(player.color.value))
+			window.addstr(y + j, x + i, player.symbol, curses.color_pair(player.color.value))
 
 	def draw_starting_screen(self):
 		msg1 = "Press 'n' to add more players"
 		msg2 = "Press 's' to start"
 		self.dealer_wind.addstr(round(self.H/4), round(self.W/2 - len(msg1)), msg1)
 		self.dealer_wind.addstr(round(self.H/4)+1, round(self.W/2 - len(msg2)), msg2)
+		self.dealer_wind.refresh()
 
-	def draw_game_screen(self):
-		pass
+	def draw_betting_screen(self):
+		msg1 = "Please place your bet (pick a number 5 - 500)"
+		self.dealer_wind.addstr(int(self.H/2), max(0,int(self.W*3/4-len(msg1)/2)))
+
+
+	def next_state(self):
+		if self.state == "starting":
+			self.state = "game"
+		self.refresh()
 
 def wait(stdscr):
 	while(stdscr.getch() != ord('q')):
