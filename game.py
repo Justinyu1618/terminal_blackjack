@@ -70,7 +70,7 @@ class Player:
 		total = [0]
 		for card in self.cards:
 			if card.num == 'A':
-				temp = [11 + t for t in total.copy()]
+				temp = [11 + t for t in total]
 				total = [1 + t for t in total]
 				total.extend(temp)
 			elif not card.num.isdigit():
@@ -202,36 +202,44 @@ class Game:
 				if bet:
 					self.dealer.add_score(bet)
 					break
+		self.display.set_turn(None)
 		self.dealer.reveal()
-		self.display.refresh()
+		self.display.set_state("scoring")
 		self.sleep(1000)
-		while(True):
-			if self.dealer.bust() == False:
-				for p in self.players:
-					if p.cards: 
-						self.dealer.score -= p.bet
-						p.win()
-				self.display.refresh()
-				break
-			elif max(self.dealer.sums()) < 17:
-				self.dealer.add_card(self.dealer.deal())
-				self.display.refresh()
-				self.sleep(1000)
-			else:
-				dealer_sum = max(self.dealer.sums())
-				for p in self.players:
-					if p.cards:
-						self.display.set_turn(p)
-						self.sleep(1000)
-						p_sum = max(p.sums())
-						if p_sum > dealer_sum: 
+		if(any([p.cards for p in self.players])):
+			while(True):
+				if self.dealer.bust() == True:
+					self.display.print("Dealer BUST!")
+					for p in self.players:
+						if p.cards: 
 							self.dealer.score -= p.bet
 							p.win()
-						elif p_sum < dealer_sum:
-							self.dealer.add_score(p.lose())
-						else:
-							p.standoff()
-				break
+					self.display.refresh()
+					break
+				elif max(self.dealer.sums()) < 17:
+					self.dealer.add_card(self.dealer.deal())
+					self.display.print("Dealing....")
+					self.sleep(1000)
+				else:
+					dealer_sum = max(self.dealer.sums())
+					for p in self.players:
+						if p.cards:
+							self.display.set_turn(p)
+							self.display.print(f"{p.name} vs Dealer")
+							self.sleep(1500)
+							p_sum = max(p.sums())
+							if p_sum > dealer_sum: 
+								self.display.print(f"{p.name} Wins!")
+								self.dealer.score -= p.bet
+								p.win()
+							elif p_sum < dealer_sum:
+								self.display.print("Dealer Wins!")
+								self.dealer.add_score(p.lose())
+							else:
+								self.display.print("Standoff!")
+								p.standoff()
+							self.sleep(2000)
+					break
 
 	def end(self):
 		self.display.set_state("end")

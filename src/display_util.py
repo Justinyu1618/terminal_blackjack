@@ -48,6 +48,9 @@ class PlayerPartition:
 				'score': self.get_score_coords(),
 				'bet': self.get_bet_coords(),
 				'name': self.get_name_coords()}
+	def resize(self, x,w):
+		if x: self.x = x
+		if w: self.w = w
 
 class PartitionManager:
 	def __init__(self, bound_x: tuple, bound_y: tuple, num_parts = 4):
@@ -68,13 +71,16 @@ class PartitionManager:
 			temp_x += width + 1
 
 	def add_player(self, player_id):
-		# self.num_players += 1
-		# for partition in self.players.values():
-		# 	partition.scale((self.num_players-1)/self.num_players)
-		# new_x = round(self.x_min + self.w * (self.num_players-1/self.num_players))
-		# new_w = round(self.w * (1/self.num_players)) - 1
-		# self.players[player_id] = PlayerPartition(new_x, self.y_min, new_w, self.h)
-		self.players[player_id] = self.partitions.pop(0)
+		self.num_players += 1
+		new_w = min(int(self.w / self.num_players) - 1, int(self.w/2))
+		temp_x = self.x_min
+		for partition in self.players.values():
+			partition.resize(temp_x, new_w)
+			temp_x += new_w + 1
+		new_x = round(self.x_min + (new_w+1)*(self.num_players-1))
+		self.players[player_id] = PlayerPartition(new_x, self.y_min, new_w, self.h)
+		
+		# self.players[player_id] = self.partitions. pop(0)
 
 	def remove_player(self, player_id):
 		pass 
@@ -98,6 +104,7 @@ class DisplayTable:
 		#TODO make this not constants
 		self.state = "starting"
 		self.turn = None
+		self.printed_msg = None
 		# self.txtbox = curses.textpad.Textbox(stdscr.derwin())
 
 	def refresh(self):
@@ -116,6 +123,8 @@ class DisplayTable:
 			self.draw_turn_screen()
 		if self.state == "end":
 			self.draw_end_screen()
+		if self.printed_msg is not None:
+			self.draw_printed_msg()
 
 		self.player_wind.clear()
 		self.player_wind.box()
@@ -126,6 +135,14 @@ class DisplayTable:
 		self.player_wind.refresh()
 		self.dealer_wind.refresh()
 	
+	def print(self, msg):
+		self.printed_msg = msg
+		self.refresh()
+
+	def draw_printed_msg(self):
+		self.dealer_wind.addstr(int(self.H*3/8), max(int(self.W/2),int(self.W*3/4-len(self.printed_msg)/2)), self.printed_msg)
+		self.printed_msg = None
+
 	def add_player(self, player):
 		self.partitions.add_player(player.id)
 		self.players.add(player)
