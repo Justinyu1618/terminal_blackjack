@@ -79,7 +79,7 @@ class Player:
 	def get_options(self):
 		ret = [CMD.HIT, CMD.STAND]
 		sums = set(self.sums())
-		if len(self.cards) == 2 and (9 in sums or 10 in sums or 11 in sums):
+		if len(self.cards) == 2 and self.score >= self.bet and (9 in sums or 10 in sums or 11 in sums):
 			ret.append(CMD.DOUBLE)
 		self.options = ret
 

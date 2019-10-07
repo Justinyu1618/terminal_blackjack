@@ -107,6 +107,7 @@ class DisplayTable:
 		self.state = "starting"
 		self.turn = None
 		self.printed_msg = None
+		self.max_players = None
 
 	def refresh(self):
 		self.dealer_wind.clear()
@@ -218,8 +219,10 @@ class DisplayTable:
 	def draw_starting_screen(self):
 		msg1 = "Press 'n' to add more players"
 		msg2 = "Press 's' to start"
+		msg3 = f"(MAX PLAYERS: {self.max_players})"
 		self.dealer_wind.addstr(round(self.H/4), int(self.W*3/4-len(msg1)/2), msg1)
 		self.dealer_wind.addstr(round(self.H/4)+1, int(self.W*3/4-len(msg2)/2), msg2)
+		self.dealer_wind.addstr(round(self.H/4)+3, int(self.W*3/4-len(msg2)/2), msg3)
 
 	def draw_betting_screen(self, msg2 = None):
 		msg1 = f"Type your bet ({BET_MIN} - {BET_MAX}) and hit [Enter]"

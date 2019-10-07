@@ -33,12 +33,15 @@ class Game:
 	def start(self):
 		curses.echo()
 		self.display.set_dealer(self.dealer)
-		self.display.refresh()
+		max_players = min(int(curses.COLS / MIN_PLAYER_WIDTH), MAX_PLAYERS)
+		self.display.max_players = max_players
 		self.display.set_state("starting")
-		#starting screen
+		self.display.refresh()
+		if int(curses.COLS / MIN_PLAYER_WIDTH) < MAX_PLAYERS:
+			self.print("*Screen too small**")
 		p_count = 0
 		key = None
-		while(p_count != 4 and key != ord('s')):
+		while(p_count != max_players and key != ord('s')):
 			key = self.screen.getch()
 			if key == ord('n'):
 				p_count += 1
@@ -92,7 +95,7 @@ class Game:
 					player.add_card(self.dealer.deal())
 				elif cmd == ord(CMD.STAND.value):
 					break
-				elif cmd == ord(CMD.DOUBLE.value):
+				elif cmd == ord(CMD.DOUBLE.value) and CMD.DOUBLE in set(player.options):
 					player.score -= player.bet
 					player.bet *= 2
 					player.add_card(self.dealer.deal())

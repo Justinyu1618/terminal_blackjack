@@ -5,6 +5,8 @@ BET_MIN = 5
 BET_MAX = 500
 STARTING_SCORE = 10
 NUM_DECKS = 3
+MAX_PLAYERS = 4
+MIN_PLAYER_WIDTH = 20
 
 class CMD(Enum):
 	HIT = 'h'
@@ -33,8 +35,8 @@ def init_colors():
 	curses.init_pair(COLOR.CARD_RED.value, curses.COLOR_RED, curses.COLOR_WHITE)
 	curses.init_pair(COLOR.CARD_BLACK.value, curses.COLOR_BLACK, curses.COLOR_WHITE)
 	curses.init_pair(COLOR.P1.value, curses.COLOR_YELLOW, curses.COLOR_BLACK)
-	curses.init_pair(COLOR.P2.value, curses.COLOR_RED, curses.COLOR_BLACK)
+	curses.init_pair(COLOR.P2.value, curses.COLOR_BLUE, curses.COLOR_BLACK)
 	curses.init_pair(COLOR.P3.value, curses.COLOR_CYAN, curses.COLOR_BLACK)
 	curses.init_pair(COLOR.P4.value, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
-	curses.init_pair(COLOR.DEALER.value, curses.COLOR_WHITE, curses.COLOR_BLACK)
+	curses.init_pair(COLOR.DEALER.value, curses.COLOR_RED, curses.COLOR_BLACK)
 	
