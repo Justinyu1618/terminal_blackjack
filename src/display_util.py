@@ -114,6 +114,8 @@ class DisplayTable:
 			self.draw_dealing_screen()
 		if self.state == "turn":
 			self.draw_turn_screen()
+		if self.state == "end":
+			self.draw_end_screen()
 
 		self.player_wind.clear()
 		self.player_wind.box()
@@ -198,7 +200,7 @@ class DisplayTable:
 		self.dealer_wind.addstr(round(self.H/4)+1, int(self.W*3/4-len(msg2)/2), msg2)
 
 	def draw_betting_screen(self, msg2 = None):
-		msg1 = f"Place your bet ({BET_MIN} - {BET_MAX})"
+		msg1 = f"Type your bet ({BET_MIN} - {BET_MAX}) and hit [Enter]"
 		self.dealer_wind.addstr(int(self.H/4), max(int(self.W/2),int(self.W*3/4-len(msg1)/2)), msg1)
 		if msg2:
 			self.dealer_wind.addstr(int(self.H/4)+1, max(int(self.W/2),int(self.W*3/4-len(msg2)/2)), msg2)
@@ -221,11 +223,15 @@ class DisplayTable:
 				msg = f"[{option.value}] - {option.name} "
 				col = round(i/len(self.turn.options))+1
 				self.dealer_wind.addstr(2*i + 1, max(int(self.W*(col+1)/4),int(self.W*(3+2*col)/8)), msg)
-		
+	
+	def draw_end_screen(self):
+		msg1 = f"Round over! Would you like to keep playing? (y/n)"
+		self.dealer_wind.addstr(int(self.H/4), max(int(self.W/2),int(self.W*3/4-len(msg1)/2)), msg1)
 
 	def set_state(self, state):
-		self.state = state
-		self.refresh()
+		if self.state != state:
+			self.state = state
+			self.refresh()
 
 	def set_turn(self, player):
 		self.turn = player
