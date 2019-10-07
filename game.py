@@ -1,121 +1,9 @@
 from uuid import uuid4
 from src.display_util import DisplayTable
 from src.constants import *
+from src.objects import Card, Player, Dealer
 from random import randint
 import curses
-
-class Card:
-	suit_chars = {SUIT.D: "\u2666",
-				SUIT.S: "\u2660",
-				SUIT.H: "\u2665",
-				SUIT.C: "\u2663"}
-
-	def __init__(self, suit, num, facedown=False):
-		self.suit = suit
-		self.symbol = self.suit_chars[suit]
-		self.num = str(num)
-		self.facedown = facedown
-		self.color = COLOR.CARD_RED if suit == SUIT.D or suit == SUIT.H else COLOR.CARD_BLACK
-
-	def flip(self):
-		self.facedown = not self.facedown
-
-class Player:
-	def __init__(self, name, player_num):
-		self.name = name
-		self.id = uuid4()
-		self.score = STARTING_SCORE
-		self.cards = []
-		self.color = eval(f"COLOR.{player_num}")
-		self.symbol = chr(randint(33,126))
-		self.avatar = [(randint(0,4), randint(0,4)) for i in range(20)]
-		self.bet = 0
-		self.options = []
-
-	def reset(self):
-		self.cards = []
-		self.bet = 0
-		self.options = []
-
-	def add_card(self, card):
-		self.cards.append(card)
-
-	def add_score(self, earnings):
-		self.score += int(earnings)
-	
-	def make_bet(self, amount):
-		self.score -= int(amount)
-		self.bet = int(amount) 
-
-	def bust(self, cost=0):
-		if len(self.sums()) == 0:
-			return self.lose()
-		else:
-			return False
-	def lose(self):
-		self.cards = []
-		bet = self.bet
-		self.bet = 0
-		return bet
-
-	def standoff(self):
-		self.score += self.bet
-		self.bet = 0
-
-	def win(self):
-		self.score += self.bet * 2
-		self.bet = 0
-
-	def sums(self):
-		total = [0]
-		for card in self.cards:
-			if card.num == 'A':
-				temp = [11 + t for t in total]
-				total = [1 + t for t in total]
-				total.extend(temp)
-			elif not card.num.isdigit():
-				total = [10 + t for t in total]
-			else:
-				total = [int(card.num) + t for t in total]
-		total = [t for t in total if t <= 21]
-		return total
-
-	def get_options(self):
-		#TODO make these constants
-		ret = [CMD.HIT, CMD.STAND]
-		sums = set(self.sums())
-		if len(self.cards) == 2 and (9 in sums or 10 in sums or 11 in sums):
-			self.options.append(CMD.DOUBLE)
-		self.options = ret
-
-
-class Dealer(Player):
-	def __init__(self, num_decks=NUM_DECKS):
-		super().__init__("Dealer","DEALER")
-		self.color = COLOR.DEALER
-		self.avatar = [(randint(0,9), randint(-1,4)) for i in range(45)]
-		self.deck = []
-		for i in range(num_decks):
-			self.init_deck()
-		self.bet = "0"
-		self.score = 0
-
-	def init_deck(self):
-		for num in list(range(2,11)) + ['J','Q','K','A']:
-			for suit in SUIT:
-				self.deck.append(Card(suit, num))
-
-	def deal(self, facedown=False):
-		if len(self.deck) == 0:
-			return False
-		card = self.deck.pop(randint(0, len(self.deck) - 1))
-		if facedown:
-			card.flip()
-		return card
-
-	def reveal(self):
-		self.cards[1].flip()
-
 
 class Game:
 	def __init__(self, stdscr):
@@ -130,19 +18,23 @@ class Game:
 		self.screen.notimeout(True)
 
 	def run(self):
-		self.start()
-		keep_playing = True
-		while(keep_playing):
-			self.reset()
-			self.sleep(1000)
-			self.gameplay()
-			keep_playing = self.end()
+		while(True):
+			self.start()
+			keep_playing = True
+			while(keep_playing):
+				self.sleep(1000)
+				self.gameplay()
+				self.reset()
+				if not self.players:
+					break
+				keep_playing = self.end()
+			self.end_game()
 
 	def start(self):
 		curses.echo()
 		self.display.set_dealer(self.dealer)
 		self.display.refresh()
-
+		self.display.set_state("starting")
 		#starting screen
 		p_count = 0
 		key = None
@@ -155,9 +47,19 @@ class Game:
 				self.display.add_player(new_player)
 		
 	def gameplay(self):
-		turn_order = self.players.copy()
 		self.display.set_state("betting")
-		for player in turn_order:
+		self._betting()
+		self.display.set_state("dealing")
+		self._dealing()
+		self.display.set_state("turn")
+		self._turn()
+		self.display.set_state("scoring")
+		self._scoring()
+		self.sleep(1000)
+		self.check_losers()	
+
+	def _betting(self):
+		for player in self.players:
 			self.display.set_turn(player)
 			bet = ""
 			while(not bet.isdigit() or int(bet) > player.score
@@ -167,8 +69,8 @@ class Game:
 				# 	self.display.set_state("betting_error")
 			player.make_bet(bet)
 		self.display.set_turn(None)
-
-		self.display.set_state("dealing")
+	
+	def _dealing(self):
 		for i in range(2):
 			for p in self.players:
 				p.add_card(self.dealer.deal())
@@ -176,18 +78,16 @@ class Game:
 				self.sleep(300)
 			self.dealer.add_card(self.dealer.deal(facedown = i == 1))
 			self.display.refresh()
-		
-		self.display.set_state("turn")
-		for i in range(len(turn_order)):
-			player = turn_order[i]
+
+	def _turn(self):
+		for i in range(len(self.players)):
+			player = self.players[i]
 			player.get_options()
 			self.display.set_turn(player)
 			while(True):
 				cmd = self.screen.getch()
 				while(cmd not in list(map(lambda x:ord(x.value), CMD))):
 					cmd = self.screen.getch()
-				self.display.draw_starting_screen()
-				self.display.refresh()
 				if cmd == ord('h'):
 					player.add_card(self.dealer.deal())
 				elif cmd == ord(CMD.STAND.value):
@@ -196,50 +96,38 @@ class Game:
 					player.score -= player.bet
 					player.bet *= 2
 					player.add_card(self.dealer.deal())
+					if player.bust():
+						self.dealer.add_score(player.lose())
+					break
 				self.display.refresh()
 				self.sleep(300)
-				bet = player.bust()
-				if bet:
-					self.dealer.add_score(bet)
+				if player.bust():
+					self.dealer.add_score(player.lose())
 					break
 		self.display.set_turn(None)
 		self.dealer.reveal()
-		self.display.set_state("scoring")
-		self.sleep(1000)
-		if(any([p.cards for p in self.players])):
-			while(True):
-				if self.dealer.bust() == True:
-					self.display.print("Dealer BUST!")
-					for p in self.players:
-						if p.cards: 
-							self.dealer.score -= p.bet
-							p.win()
-					self.display.refresh()
-					break
-				elif max(self.dealer.sums()) < 17:
-					self.dealer.add_card(self.dealer.deal())
-					self.display.print("Dealing....")
+		while(not self.dealer_bust() and max(self.dealer.sums()) < 17):
+			self.dealer.add_card(self.dealer.deal())
+			self.print("Dealing....", 1000)
+
+	def _scoring(self):
+		if(not self.dealer.bust() and any([p.cards for p in self.players])):
+			dealer_sum = max(self.dealer.sums())
+			for p in self.players:
+				if p.cards:
+					self.display.set_turn(p)
+					self.print(f"{p.name} vs Dealer", 1000)
+					if max(p.sums()) > dealer_sum: 
+						self.print(f"{p.name} Wins!")
+						self.dealer.score -= p.bet
+						p.win()
+					elif max(p.sums()) < dealer_sum:
+						self.print("Dealer Wins!")
+						self.dealer.add_score(p.lose())
+					else:
+						self.print("Standoff!")
+						p.standoff()
 					self.sleep(1000)
-				else:
-					dealer_sum = max(self.dealer.sums())
-					for p in self.players:
-						if p.cards:
-							self.display.set_turn(p)
-							self.display.print(f"{p.name} vs Dealer")
-							self.sleep(1500)
-							p_sum = max(p.sums())
-							if p_sum > dealer_sum: 
-								self.display.print(f"{p.name} Wins!")
-								self.dealer.score -= p.bet
-								p.win()
-							elif p_sum < dealer_sum:
-								self.display.print("Dealer Wins!")
-								self.dealer.add_score(p.lose())
-							else:
-								self.display.print("Standoff!")
-								p.standoff()
-							self.sleep(2000)
-					break
 
 	def end(self):
 		self.display.set_state("end")
@@ -250,11 +138,43 @@ class Game:
 			elif cmd == ord('n'):
 				return False
 
+	def end_game(self):
+		for i in range(5,0,-1):
+			self.print(f" Game Over! (restarting in {i})",1000)
+		self.display.restart()
+
+
+	def print(self, msg, delay=0):
+		self.display.print(msg)
+		self.sleep(delay)
+
 	def reset(self):
 		for p in self.players:
 			p.reset()
 		self.dealer.reset()
+		self.display.set_turn(None)
+	
+	def check_losers(self):
+		to_remove = set()
+		for p in self.players:
+			if p.score <= 0:
+				self.print(f"{p.name} has lost!", 1000)
+				to_remove.add(p)
+				self.display.remove_player(p)
+		for p in to_remove:
+			self.players.remove(p)
+
 		
+	def dealer_bust(self):
+		if self.dealer.bust():
+			self.print("Dealer BUST!", 1000)
+			for p in self.players:
+				if p.cards: 
+					self.dealer.score -= p.bet
+					p.win()
+			self.display.refresh()
+			return True
+		return False
 
 
 def main(stdscr):

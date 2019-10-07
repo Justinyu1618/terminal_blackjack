@@ -82,12 +82,15 @@ class PartitionManager:
 		
 		# self.players[player_id] = self.partitions. pop(0)
 
-	def remove_player(self, player_id):
-		pass 
+	def remove_player(self, player):
+		self.players.remove(player.id)
 
 	def get_coords(self, player):
 		partition = self.players[player.id]
 		return partition.get_coords(player)
+	def restart(self):
+		self.num_players = 0
+		self.players = {}
 
 class DisplayTable:
 	def __init__(self, stdscr):
@@ -101,11 +104,9 @@ class DisplayTable:
 		self.partitions = PartitionManager((0,self.W-1), (0,round(self.H/2)))
 		self.dealer = None
 		self.dealer_partition = None
-		#TODO make this not constants
 		self.state = "starting"
 		self.turn = None
 		self.printed_msg = None
-		# self.txtbox = curses.textpad.Textbox(stdscr.derwin())
 
 	def refresh(self):
 		self.dealer_wind.clear()
@@ -146,6 +147,10 @@ class DisplayTable:
 	def add_player(self, player):
 		self.partitions.add_player(player.id)
 		self.players.add(player)
+		self.refresh()
+
+	def remove_player(self, player):
+		self.players.remove(player)
 		self.refresh()
 
 	def set_dealer(self, dealer):
@@ -238,8 +243,7 @@ class DisplayTable:
 			for i in range(len(self.turn.options)):
 				option = self.turn.options[i]
 				msg = f"[{option.value}] - {option.name} "
-				col = round(i/len(self.turn.options))+1
-				self.dealer_wind.addstr(2*i + 1, max(int(self.W*(col+1)/4),int(self.W*(3+2*col)/8)), msg)
+				self.dealer_wind.addstr(2*i + int(self.H/8), max(int(self.W/2),int(self.W*5/8)), msg)
 	
 	def draw_end_screen(self):
 		msg1 = f"Round over! Would you like to keep playing? (y/n)"
@@ -253,6 +257,14 @@ class DisplayTable:
 	def set_turn(self, player):
 		self.turn = player
 		self.refresh()
+
+	def restart(self):
+		self.items = []
+		self.players = set()
+		self.state = "starting"
+		self.turn = None
+		self.printed_msg = None
+		self.partitions.restart()
 
 
 def wait(stdscr):
