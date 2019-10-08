@@ -23,7 +23,7 @@ class PlayerPartition:
 			temp_x += card_dim + 2
 		return ret
 
-	def get_score_coords(self):
+	def get_money_coords(self):
 		x = self.x + max(round(self.w*5/8), 1)
 		y = self.y + round(self.h/2) + 2
 		return x,y
@@ -45,7 +45,7 @@ class PlayerPartition:
 		return {'bounds': self.get_bounds_coords(),
 				'player': self.get_player_coords(),
 				'cards': self.get_card_coords(len(player.cards)),
-				'score': self.get_score_coords(),
+				'money': self.get_money_coords(),
 				'bet': self.get_bet_coords(),
 				'name': self.get_name_coords()}
 	def resize(self, x,w):
@@ -94,6 +94,7 @@ class PartitionManager:
 
 class DisplayTable:
 	def __init__(self, stdscr):
+		self.screen = stdscr
 		self.items = []
 		self.H = curses.LINES - 1
 		self.W = curses.COLS - 1
@@ -162,7 +163,7 @@ class DisplayTable:
 		coords = self.partitions.get_coords(player) if not coords else coords
 		self.draw_avatar(player, window, coords['player'])
 		self.draw_name(player.name, window, coords['name'])
-		self.draw_score(player.score, window, coords['score'])
+		self.draw_money(player.money, window, coords['money'])
 		self.draw_bet(player.bet, window, coords['bet'])
 		for i in range(len(player.cards)):
 			self.draw_card(player.cards[i], window, coords['cards'][i])
@@ -196,10 +197,10 @@ class DisplayTable:
 			window.addstr(j,x,"|")
 			window.addstr(j,x+w-1,"|")
 
-	def draw_score(self, score, window, loc):
+	def draw_money(self, money, window, loc):
 		x,y = loc
-		window.addstr(y,x,"Score")
-		window.addstr(y+1,x,f"{score}")
+		window.addstr(y,x,"Money")
+		window.addstr(y+1,x,f"{money}")
 
 	def draw_bet(self, bet, window, loc):
 		x,y = loc
@@ -229,7 +230,7 @@ class DisplayTable:
 		self.dealer_wind.addstr(int(self.H/4), max(int(self.W/2),int(self.W*3/4-len(msg1)/2)), msg1)
 		if msg2:
 			self.dealer_wind.addstr(int(self.H/4)+1, max(int(self.W/2),int(self.W*3/4-len(msg2)/2)), msg2)
-		self.dealer_wind.move(int(self.H/4) + 2, int(self.W*3/4))
+		self.screen.move(int(self.H/4) + 2, int(self.W*3/4))
 
 	def draw_turn_marker(self, player):
 		msg1 = "[Your Turn]"
@@ -253,9 +254,9 @@ class DisplayTable:
 		self.dealer_wind.addstr(int(self.H/4), max(int(self.W/2),int(self.W*3/4-len(msg1)/2)), msg1)
 
 	def set_state(self, state):
-		if self.state != state:
-			self.state = state
-			self.refresh()
+		# if self.state != state:
+		self.state = state
+		self.refresh()
 
 	def set_turn(self, player):
 		self.turn = player

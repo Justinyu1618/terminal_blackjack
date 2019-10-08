@@ -22,7 +22,7 @@ class Player:
 	def __init__(self, name, player_num):
 		self.name = name
 		self.id = uuid4()
-		self.score = STARTING_SCORE
+		self.money = STARTING_MONEY
 		self.cards = []
 		self.color = eval(f"COLOR.{player_num}")
 		self.symbol = chr(randint(33,126))
@@ -38,11 +38,11 @@ class Player:
 	def add_card(self, card):
 		self.cards.append(card)
 
-	def add_score(self, earnings):
-		self.score += int(earnings)
+	def add_money(self, earnings):
+		self.money += int(earnings)
 	
 	def make_bet(self, amount):
-		self.score -= int(amount)
+		self.money -= int(amount)
 		self.bet = int(amount) 
 
 	def bust(self, cost=0):
@@ -55,11 +55,11 @@ class Player:
 		return bet
 
 	def standoff(self):
-		self.score += self.bet
+		self.money += self.bet
 		self.bet = 0
 
 	def win(self):
-		self.score += self.bet * 2
+		self.money += self.bet * 2
 		self.bet = 0
 
 	def sums(self):
@@ -79,7 +79,7 @@ class Player:
 	def get_options(self):
 		ret = [CMD.HIT, CMD.STAND]
 		sums = set(self.sums())
-		if len(self.cards) == 2 and self.score >= self.bet and (9 in sums or 10 in sums or 11 in sums):
+		if len(self.cards) == 2 and self.money >= self.bet and (9 in sums or 10 in sums or 11 in sums):
 			ret.append(CMD.DOUBLE)
 		self.options = ret
 
@@ -93,7 +93,7 @@ class Dealer(Player):
 		for i in range(num_decks):
 			self.init_deck()
 		self.bet = "0"
-		self.score = 0
+		self.money = 0
 
 	def init_deck(self):
 		for num in list(range(2,11)) + ['J','Q','K','A']:

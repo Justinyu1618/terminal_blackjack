@@ -15,7 +15,7 @@ class Game:
 	def sleep(self, time):
 		self.screen.timeout(time)
 		self.screen.getch()
-		self.screen.notimeout(True)
+		self.screen.timeout(-1)
 
 	def run(self):
 		while(True):
@@ -65,11 +65,11 @@ class Game:
 		for player in self.players:
 			self.display.set_turn(player)
 			bet = ""
-			while(not bet.isdigit() or int(bet) > player.score
+			while(not bet.isdigit() or int(bet) > player.money
 					or int(bet) < BET_MIN or int(bet) > BET_MAX):
 				bet = self.screen.getstr()
-				# if self.display.state != "betting_error":
-				# 	self.display.set_state("betting_error")
+				self.display.set_state("betting_error")
+			self.display.set_state("betting")
 			player.make_bet(bet)
 		self.display.set_turn(None)
 	
@@ -96,16 +96,16 @@ class Game:
 				elif cmd == ord(CMD.STAND.value):
 					break
 				elif cmd == ord(CMD.DOUBLE.value) and CMD.DOUBLE in set(player.options):
-					player.score -= player.bet
+					player.money -= player.bet
 					player.bet *= 2
 					player.add_card(self.dealer.deal())
 					if player.bust():
-						self.dealer.add_score(player.lose())
+						self.dealer.add_money(player.lose())
 					break
 				self.display.refresh()
 				self.sleep(300)
 				if player.bust():
-					self.dealer.add_score(player.lose())
+					self.dealer.add_money(player.lose())
 					break
 		self.display.set_turn(None)
 		self.dealer.reveal()
@@ -122,11 +122,11 @@ class Game:
 					self.print(f"{p.name} vs Dealer", 1000)
 					if max(p.sums()) > dealer_sum: 
 						self.print(f"{p.name} Wins!")
-						self.dealer.score -= p.bet
+						self.dealer.money -= p.bet
 						p.win()
 					elif max(p.sums()) < dealer_sum:
 						self.print("Dealer Wins!")
-						self.dealer.add_score(p.lose())
+						self.dealer.add_money(p.lose())
 					else:
 						self.print("Standoff!")
 						p.standoff()
@@ -160,7 +160,7 @@ class Game:
 	def check_losers(self):
 		to_remove = set()
 		for p in self.players:
-			if p.score <= 0:
+			if p.money <= 0:
 				self.print(f"{p.name} has lost!", 1000)
 				to_remove.add(p)
 				self.display.remove_player(p)
@@ -173,7 +173,7 @@ class Game:
 			self.print("Dealer BUST!", 1000)
 			for p in self.players:
 				if p.cards: 
-					self.dealer.score -= p.bet
+					self.dealer.money -= p.bet
 					p.win()
 			self.display.refresh()
 			return True
