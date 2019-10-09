@@ -19,19 +19,23 @@ class Game:
 
 	def run(self):
 		while(True):
-			self.start()
-			keep_playing = True
-			while(keep_playing):
-				self.sleep(1000)
-				self.gameplay()
-				self.reset()
-				if not self.players:
-					break
-				keep_playing = self.end()
+			if self.start():
+				keep_playing = True
+				while(keep_playing):
+					self.sleep(1000)
+					self.gameplay()
+					self.reset()
+					if not self.players:
+						break
+					keep_playing = self.end()
 			self.end_game()
 
 	def start(self):
 		curses.echo()
+		if curses.LINES < MIN_HEIGHT:
+			self.print(f"HEIGHT TOO SMALL ({curses.LINES})")
+			self.sleep(2000)
+			return False
 		self.display.set_dealer(self.dealer)
 		max_players = min(int(curses.COLS / MIN_PLAYER_WIDTH), MAX_PLAYERS)
 		self.display.max_players = max_players
@@ -48,6 +52,7 @@ class Game:
 				new_player = Player(f"Player {p_count}", f"P{p_count}")
 				self.players.append(new_player)
 				self.display.add_player(new_player)
+		return True
 		
 	def gameplay(self):
 		self.display.set_state("betting")

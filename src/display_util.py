@@ -5,9 +5,9 @@ class PlayerPartition:
 	def __init__(self, x, y, w, h):
 		self.x, self.y, self.w, self.h = x, y, w, h
 
-	def get_player_coords(self):
+	def get_player_coords(self, player):
 		x = self.x + max(round(self.w/8), 1)
-		y = self.y + round(self.h/2) + 2
+		y = self.y + min(self.h - player.avatar_size-2, round(self.h/2) + 2)
 		return x,y
 
 	def get_card_coords(self, num_cards):
@@ -25,17 +25,17 @@ class PlayerPartition:
 
 	def get_money_coords(self):
 		x = self.x + max(round(self.w*5/8), 1)
-		y = self.y + round(self.h/2) + 2
+		y = self.y + min(self.h-6, round(self.h/2) + 2)
 		return x,y
 
 	def get_bet_coords(self):
 		x = self.x + max(round(self.w*5/8), 1)
-		y = self.y + round(self.h/2) + 5
+		y = self.y + min(self.h-4, round(self.h/2) + 5)
 		return x,y
 
 	def get_name_coords(self):
 		x = self.x + max(round(self.w/8), 1)
-		y = self.y + round(self.h*7/8)
+		y = self.y + min(self.h - 3, round(self.h*7/8))
 		return x,y
 
 	def get_bounds_coords(self):
@@ -43,7 +43,7 @@ class PlayerPartition:
 
 	def get_coords(self, player):
 		return {'bounds': self.get_bounds_coords(),
-				'player': self.get_player_coords(),
+				'player': self.get_player_coords(player),
 				'cards': self.get_card_coords(len(player.cards)),
 				'money': self.get_money_coords(),
 				'bet': self.get_bet_coords(),
@@ -53,11 +53,11 @@ class PlayerPartition:
 		if w: self.w = w
 
 class PartitionManager:
-	def __init__(self, bound_x: tuple, bound_y: tuple, num_parts = 4):
-		self.x_min, self.x_max = bound_x
-		self.y_min, self.y_max = bound_y
-		self.w = self.x_max - self.x_min
-		self.h = self.y_max - self.y_min
+	def __init__(self, x, y, w, h, num_parts = 4):
+		self.x_min = x
+		self.y_min = y
+		self.w = w
+		self.h = h
 		self.num_players = 0
 		self.players = {}
 
@@ -88,6 +88,7 @@ class PartitionManager:
 	def get_coords(self, player):
 		partition = self.players[player.id]
 		return partition.get_coords(player)
+
 	def restart(self):
 		self.num_players = 0
 		self.players = {}
@@ -100,12 +101,12 @@ class DisplayTable:
 		self.W = curses.COLS - 1
 		self.dealer_wind = stdscr.derwin(int(self.H/2-1), self.W, 0, 0)
 		self.dealer_wind.box()
-		self.player_wind = stdscr.derwin(int(self.H/2-1), self.W, int(self.H/2+1), 0)	
+		self.player_wind = stdscr.derwin(int(self.H/2), self.W, int(self.H/2+1), 0)	
 		self.players = set()
-		self.partitions = PartitionManager((0,self.W-1), (0,round(self.H/2)))
+		self.partitions = PartitionManager(0, 0, self.W-1, int(self.H/2))
 		self.dealer = None
 		self.dealer_partition = None
-		self.state = "starting"
+		self.state = None
 		self.turn = None
 		self.printed_msg = None
 		self.max_players = None
@@ -193,7 +194,7 @@ class DisplayTable:
 
 	def draw_boundary(self, window, loc):
 		x,y,w,h = loc
-		for j in range(y,y+h-1):
+		for j in range(y,y+h-2):
 			window.addstr(j,x,"|")
 			window.addstr(j,x+w-1,"|")
 

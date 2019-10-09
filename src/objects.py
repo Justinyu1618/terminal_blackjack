@@ -26,7 +26,8 @@ class Player:
 		self.cards = []
 		self.color = eval(f"COLOR.{player_num}")
 		self.symbol = chr(randint(33,126))
-		self.avatar = [(randint(0,4), randint(0,4)) for i in range(20)]
+		self.avatar_size = 5
+		self.avatar = [(randint(0,self.avatar_size-1), randint(0,self.avatar_size-1)) for i in range(20)]
 		self.bet = 0
 		self.options = []
 
@@ -94,6 +95,7 @@ class Dealer(Player):
 			self.init_deck()
 		self.bet = "0"
 		self.money = 0
+
 
 	def init_deck(self):
 		for num in list(range(2,11)) + ['J','Q','K','A']:
